@@ -66,7 +66,7 @@ export function Navbar() {
                         let iterations = 0;
                         const interval = setInterval(() => {
                             setLogoText(originalText.split("")
-                                .map((char, index) => {
+                                .map((_, index) => {
                                     if (index < iterations) return originalText[index];
                                     return chars[Math.floor(Math.random() * chars.length)];
                                 })

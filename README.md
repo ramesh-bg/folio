@@ -1,75 +1,87 @@
-# React + TypeScript + Vite
+# Ramesh BG - Developer Portfolio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, responsive, and interactive developer portfolio built with React, TypeScript, and Vite. This portfolio showcases my skills, experience, and projects with a focus on clean code, performance, and engineering aesthetics.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+-   **Modern Tech Stack**: Built with React 19, TypeScript, and Vite for blazing fast performance.
+-   **Engineering Aesthetic**: "Matrix/Engineering" inspired theme with a dynamic grid background.
+-   **Dark Mode Default**: Optimized for developer ergonomics with a deep green/black color palette.
+-   **Interactive Animations**:
+    -   **Framer Motion**: Smooth hover effects on navigation and cards.
+    -   **GSAP ScrollTrigger**: Sections fade in and slide up gracefully on scroll.
+    -   **Glitch Effect**: Custom decoding animation on the logo.
+    -   **Animated Icons**: Usage of Lucide React for dynamic visual elements.
+-   **Responsive Design**: Fully responsive layout using Tailwind CSS.
+-   **SEO Optimized**: Semantic HTML and comprehensive meta tags for better discoverability.
 
-## React Compiler
+## 🛠️ Tech Stack
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+-   **Frontend**: React 19, TypeScript
+-   **Build Tool**: Vite
+-   **Styling**: Tailwind CSS, Shadcn UI (components)
+-   **Animations**: Framer Motion, GSAP (GreenSock)
+-   **Icons**: Lucide React
+-   **Package Manager**: pnpm (recommended)
 
-Note: This will impact Vite dev & build performances.
+## 🏃‍♂️ Getting Started
 
-## Expanding the ESLint configuration
+### Prerequisites
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+-   Node.js (v18+ recommended)
+-   pnpm (v9+ recommended)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Installation
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/yourusername/folio.git
+    cd folio
+    ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+2.  **Install dependencies**:
+    ```bash
+    pnpm install
+    ```
+
+3.  **Run the development server**:
+    ```bash
+    pnpm run dev
+    ```
+    Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+## 🚢 Deployment
+
+This project is configured for easy deployment to **GitHub Pages**.
+
+### Deploying to GitHub Pages
+
+1.  Ensure you have commited all your changes.
+2.  Run the deploy script:
+    ```bash
+    pnpm run deploy
+    ```
+    This command acts as a shortcut for: `pnpm run build && npx gh-pages -d build -t`
+
+    -   It builds the project to the `build` directory (or `dist` depending on Vite config, usually `dist` but script says `build`, ensuring config matches). *Note: Standard Vite builds to `dist`. The script uses `build`, so ensure your vite config output dir matches or the script points to `dist`. Default Vite uses `dist`.*
+
+    *(Correction: The provided script uses `build`. If standard Vite is used, it outputs to `dist`. If you haven't changed verify `vite.config.ts`. If it defaults to `dist`, update the script or config.)*
+
+## 📁 Project Structure
+
+```
+src/
+├── components/         # React components
+│   ├── layout/         # Layout components (Navbar, Background)
+│   ├── sections/       # Page sections (Hero, About, Experience...)
+│   ├── ui/             # Reusable UI components (Buttons, Cards...)
+│   └── theme-provider.tsx
+├── data/              # Static data for portfolio (resume, skills, etc.)
+├── hooks/             # Custom React hooks (useScrollAnimation)
+├── lib/               # Utilities (classes, helpers)
+└── App.tsx            # Main application entry
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 📄 License
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+MIT © [Ramesh BG](https://github.com/rameshbg)
