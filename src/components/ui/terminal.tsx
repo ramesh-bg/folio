@@ -13,18 +13,31 @@ export function Terminal() {
     useEffect(() => {
         let index = 0
         let currentText = ""
+        let interval: any
 
-        const interval = setInterval(() => {
-            if (index < fullText.length) {
-                currentText += fullText.charAt(index)
-                setText(currentText)
-                index++
-            } else {
-                clearInterval(interval)
-            }
-        }, 50)
+        const startTyping = () => {
+            index = 0
+            currentText = ""
+            setText("")
 
-        return () => clearInterval(interval)
+            interval = setInterval(() => {
+                if (index < fullText.length) {
+                    currentText += fullText.charAt(index)
+                    setText(currentText)
+                    index++
+                } else {
+                    clearInterval(interval)
+                    // Wait 3 seconds then restart
+                    setTimeout(startTyping, 3000)
+                }
+            }, 50)
+        }
+
+        startTyping()
+
+        return () => {
+            clearInterval(interval)
+        }
     }, [])
 
     return (

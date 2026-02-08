@@ -11,7 +11,7 @@ export function useScrollAnimation() {
         const element = elementRef.current;
         if (!element) return;
 
-        gsap.fromTo(
+        const animation = gsap.fromTo(
             element,
             { opacity: 0, y: 50 },
             {
@@ -21,24 +21,15 @@ export function useScrollAnimation() {
                 ease: "power3.out",
                 scrollTrigger: {
                     trigger: element,
-                    start: "top 85%", // Animation starts when top of element hits 85% of viewport height
-                    toggleActions: "play none none none", // Animate once and stay visible
+                    start: "top 85%",
+                    toggleActions: "play none none none",
                 },
             }
         );
 
-        const handleLoad = () => {
-            ScrollTrigger.refresh();
-        };
-
-        window.addEventListener("load", handleLoad);
-        // Also refresh after a small delay to catch any late layout shifts
-        const refreshTimeout = setTimeout(() => ScrollTrigger.refresh(), 500);
-
         return () => {
-            window.removeEventListener("load", handleLoad);
-            clearTimeout(refreshTimeout);
-            ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
+            animation.scrollTrigger?.kill();
+            animation.kill();
         };
     }, []);
 

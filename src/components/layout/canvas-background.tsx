@@ -16,11 +16,17 @@ export function CanvasBackground() {
         let width = window.innerWidth
         let height = window.innerHeight
 
+        let resizeTimeout: any
         const handleResize = () => {
-            width = window.innerWidth
-            height = window.innerHeight
-            canvas.width = width
-            canvas.height = height
+            clearTimeout(resizeTimeout)
+            resizeTimeout = setTimeout(() => {
+                width = window.innerWidth
+                height = window.innerHeight
+                if (canvas) {
+                    canvas.width = width
+                    canvas.height = height
+                }
+            }, 100)
         }
 
         const handleMouseMove = (e: MouseEvent) => {
@@ -104,7 +110,7 @@ export function CanvasBackground() {
     return (
         <canvas
             ref={canvasRef}
-            className="fixed top-0 left-0 w-full h-full -z-10 bg-background transition-colors duration-500"
+            className="fixed top-0 left-0 w-full h-full -z-10 bg-background transition-colors duration-500 pointer-events-none"
         />
     )
 }
