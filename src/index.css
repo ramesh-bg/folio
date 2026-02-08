@@ -76,7 +76,9 @@
   }
 }
 
-html {
+html,
+body {
   overflow-x: hidden;
   height: auto;
+  min-height: 100%;
 }

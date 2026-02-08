@@ -42,7 +42,7 @@ export function About() {
                         </div>
                     </div>
 
-                    <div className="relative group perspective-1000">
+                    <div className="relative group [perspective:1000px] overflow-visible">
                         <div className="absolute -inset-1 bg-gradient-to-r from-primary to-green-600 rounded-lg blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
                         <div className="relative transform transition-transform duration-500 hover:scale-[1.02]">
                             <Terminal />

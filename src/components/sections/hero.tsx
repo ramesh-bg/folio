@@ -66,8 +66,10 @@ export function Hero() {
             </div>
 
             {/* Decorative Grid or Elements could go here */}
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
-                <span className="text-muted-foreground text-sm">Scroll Down</span>
+            <div className="absolute bottom-10 left-0 right-0 flex justify-center">
+                <div className="animate-bounce">
+                    <span className="text-muted-foreground text-sm font-medium tracking-widest uppercase opacity-70">Scroll Down</span>
+                </div>
             </div>
         </section>
     )

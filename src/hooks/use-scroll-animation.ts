@@ -27,7 +27,17 @@ export function useScrollAnimation() {
             }
         );
 
+        const handleLoad = () => {
+            ScrollTrigger.refresh();
+        };
+
+        window.addEventListener("load", handleLoad);
+        // Also refresh after a small delay to catch any late layout shifts
+        const refreshTimeout = setTimeout(() => ScrollTrigger.refresh(), 500);
+
         return () => {
+            window.removeEventListener("load", handleLoad);
+            clearTimeout(refreshTimeout);
             ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
         };
     }, []);
