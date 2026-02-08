@@ -23,7 +23,7 @@ export function About() {
                         {/* Focus Areas / Highlights */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                             {[
-                                { title: "Fintech Architecture", icon: Landmark, color: "text-blue-500" },
+                                { title: "Enterprise Architecture", icon: Landmark, color: "text-blue-500" },
                                 { title: "Frontend Performance", icon: Zap, color: "text-yellow-500" },
                                 { title: "Scalable Systems", icon: Server, color: "text-purple-500" },
                                 { title: "Clean Code", icon: Code2, color: "text-green-500" }
