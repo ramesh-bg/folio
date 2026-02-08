@@ -42,7 +42,7 @@ export const portfolioData: PortfolioData = {
         email: "rameshbg11@gmail.com",
         phone: "+91 7829112957",
         linkedin: "https://www.linkedin.com/in/rameshbg/",
-        resume: "https://drive.google.com/file/d/1pl6jOIxrEOOyskZAIlAjdF8qw3G7-Lu_/view?usp=drive_link",
+        resume: "https://drive.google.com/file/d/1oGnUgGU9DqPDf_l5WpYQjCtHLR9sBMxo/view?usp=sharing",
         bio: "Building scalable web applications and robust architectures. Experienced in full-stack development, cloud infrastructure, and modern frontend frameworks.",
         about: "I am a Developer with expertise in Angular, React, and Node.js. I have a strong background in building fintech products, monorepo architectures, and micro-frontends. I am passionate about performance optimization, clean code, and DevOps practices."
     },

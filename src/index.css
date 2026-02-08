@@ -10,7 +10,8 @@
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 142 76% 36%; /* Green Primary */
+    --primary: 142 76% 36%;
+    /* Green Primary */
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
@@ -33,13 +34,16 @@
 
   .dark {
     /* Matrix Theme Colors */
-    --background: 120 10% 3%; /* Very Deep Green/Black */
-    --foreground: 120 100% 60%; /* Bright Matrix Green */
+    --background: 120 10% 3%;
+    /* Very Deep Green/Black */
+    --foreground: 120 100% 60%;
+    /* Bright Matrix Green */
     --card: 120 20% 5%;
     --card-foreground: 120 100% 60%;
     --popover: 120 20% 5%;
     --popover-foreground: 120 100% 60%;
-    --primary: 120 100% 50%; /* Matrix Green */
+    --primary: 120 100% 50%;
+    /* Matrix Green */
     --primary-foreground: 0 0% 0%;
     --secondary: 120 30% 10%;
     --secondary-foreground: 120 100% 60%;
@@ -64,7 +68,15 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    height: auto;
   }
+}
+
+html {
+  overflow-x: hidden;
+  height: auto;
 }

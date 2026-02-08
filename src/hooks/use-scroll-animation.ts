@@ -22,7 +22,7 @@ export function useScrollAnimation() {
                 scrollTrigger: {
                     trigger: element,
                     start: "top 85%", // Animation starts when top of element hits 85% of viewport height
-                    toggleActions: "play none none reverse", // Play on enter, reverse on leave back up
+                    toggleActions: "play none none none", // Animate once and stay visible
                 },
             }
         );

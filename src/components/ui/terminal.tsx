@@ -35,7 +35,7 @@ export function Terminal() {
                 <div className="w-3 h-3 rounded-full bg-green-500" />
                 <span className="ml-2 text-xs text-muted-foreground">bash -- 80x24</span>
             </div>
-            <div className="p-6 h-[300px] overflow-y-auto text-green-500">
+            <div className="p-6 h-auto min-h-[250px] md:h-[300px] overflow-hidden md:overflow-y-auto text-green-500 font-mono text-sm leading-relaxed scrollbar-hide">
                 <pre className="whitespace-pre-wrap font-mono">
                     {text}
                     <span className="animate-pulse">_</span>

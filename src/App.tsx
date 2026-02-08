@@ -12,7 +12,7 @@ import { Contact } from "@/components/sections/contact"
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <div className="relative min-h-screen text-foreground overflow-x-hidden selection:bg-primary selection:text-primary-foreground">
+      <div className="relative min-h-screen text-foreground selection:bg-primary selection:text-primary-foreground">
         <CanvasBackground />
         <Navbar />
 
