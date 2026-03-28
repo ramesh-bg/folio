@@ -69,6 +69,7 @@ export function SystemOverride() {
                         <span>AVAILABLE COMMANDS:</span>
                         <span>- <span className="text-white">theme [color/hue]</span> : Change system color</span>
                         <span>- <span className="text-white">list</span> : Show preset colors</span>
+                        <span>- <span className="text-white">mouse</span> : Launch cat & mouse mini-game</span>
                         <span>- <span className="text-white">clear</span> : Clear console</span>
                         <span>- <span className="text-white">exit</span> : Close terminal</span>
                     </div>, 
@@ -115,6 +116,14 @@ export function SystemOverride() {
                 } else {
                     addLog(`Error: Unknown color or invalid hue '${target}'. Use 'list' to see presets.`, "error")
                 }
+                break;
+            case "mouse":
+            case "game":
+                addLog("Launching CAT & MOUSE mini-game...", "success")
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent("start-cat-mouse"))
+                    setIsOpen(false)
+                }, 600)
                 break;
             case "sudo":
                 addLog("Nice try. This incident will be reported.", "error")

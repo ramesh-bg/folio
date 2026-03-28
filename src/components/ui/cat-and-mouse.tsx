@@ -32,6 +32,7 @@ export function CatAndMouseGame() {
   const [catches, setCatches] = useState(0)
   const [timeLeft, setTimeLeft] = useState(GAME_SECONDS)
   const [pounceReady, setPounceReady] = useState(true)
+  const [finalScore, setFinalScore] = useState(0)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const catRef = useRef<HTMLDivElement>(null)
@@ -158,6 +159,8 @@ export function CatAndMouseGame() {
     if (gs.current !== "playing") return
     gs.current = result
     setGameState(result)
+    const score = catchCount.current * 250 + (result === "won" ? timeRef.current * 10 : 0)
+    setFinalScore(score)
     if (timerID.current) clearInterval(timerID.current)
     const targets = [catRef.current, ...mice.current.map(m => m.el)].filter(Boolean) as HTMLDivElement[]
     if (targets.length) gsap.to(targets, { opacity: 0, scale: 0, duration: 0.4 })
@@ -254,6 +257,13 @@ export function CatAndMouseGame() {
     window.addEventListener("keyup", up)
     return () => { window.removeEventListener("keydown", dn); window.removeEventListener("keyup", up) }
   }, [])
+  
+  // ── terminal integration ────────────────────────────────────────────────
+  useEffect(() => {
+    const handleStart = () => { if (gs.current === "idle") startGame() }
+    window.addEventListener("start-cat-mouse", handleStart)
+    return () => window.removeEventListener("start-cat-mouse", handleStart)
+  }, [startGame])
 
   // ── main ticker ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -473,20 +483,22 @@ export function CatAndMouseGame() {
           <div key={i} className="absolute w-[80px] h-[45px] rounded-[50%] pointer-events-none"
             style={{ 
               left: h.x-40, top: h.y-22, 
-              background: "#050505",
+              background: "radial-gradient(ellipse at 50% 10%, #202020 0%, #0a0a0a 80%)",
               boxShadow: `
-                inset 0 10px 20px rgba(0,0,0,0.9), 
-                inset 0 -4px 10px rgba(0,0,0,0.8),
-                inset 0 1px 1px rgba(255,255,255,0.05),
-                0 2px 3px rgba(255,255,255,0.08)
+                inset 0 10px 25px rgba(0,0,0,0.92), 
+                inset 0 -4px 12px rgba(0,0,0,0.85),
+                0 2px 5px rgba(0,0,0,0.15),
+                0 0 0 1px hsl(var(--foreground)/0.05)
               `,
-              border: "1px solid #111",
-              borderTop: "3px solid #000",
-              transform: "perspective(500px) rotateX(8deg)"
+              border: "1px solid rgba(0,0,0,0.6)",
+              borderTop: "2px solid rgba(255,255,255,0.08)",
+              transform: "perspective(600px) rotateX(12deg)"
             }}>
-             <div className="absolute inset-0 opacity-10" 
-               style={{ background: "radial-gradient(circle at 50% 30%, hsl(var(--primary)) 0%, transparent 80%)" }} />
-             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[70%] h-[2px] bg-black/60 rounded-full blur-[1px]" />
+             <div className="absolute inset-0 opacity-[0.14]" 
+               style={{ background: "radial-gradient(circle at 50% 20%, hsl(var(--primary)) 0%, transparent 75%)" }} />
+             {/* Rim highlight for light mode depth */}
+             <div className="absolute -inset-[1.5px] rounded-[50%] opacity-40 pointer-events-none" 
+               style={{ border: "1px solid hsl(var(--foreground)/0.15)", borderBottom: "2px solid hsl(var(--foreground)/0.3)" }} />
           </div>
         ))}
         {/* Cheese */}
@@ -601,11 +613,30 @@ export function CatAndMouseGame() {
           <div className="flex flex-col items-center gap-5 px-12 py-10 border backdrop-blur-2xl"
             style={{ background: "hsl(var(--primary)/0.07)", borderColor: "hsl(var(--primary)/0.5)", boxShadow: "0 0 80px hsl(var(--primary)/0.25)" }}>
             <div className="text-6xl">{gameState === "won" ? "🏆" : "🐭"}</div>
-            <div className="font-mono font-bold text-3xl tracking-widest" style={{ color: gameState === "won" ? "hsl(var(--primary))" : "#f87171" }}>
+            <div className="font-mono font-bold text-3xl tracking-widest text-center" style={{ color: gameState === "won" ? "hsl(var(--primary))" : "#f87171" }}>
               {gameState === "won" ? "CAT'S FEAST!" : "MOUSE ESCAPED!"}
             </div>
-            <p className="font-mono text-sm opacity-60" style={{ color: "hsl(var(--primary))" }}>
-              {gameState === "won" ? `All mice have been triumphantly caught.` : `The mouse outsmarted you. Caught ${catches}/${MAX_CATCHES}.`}
+            
+            <div className="flex flex-col items-center gap-1 py-4 px-8 bg-black/20 rounded-lg border border-white/5">
+              <span className="text-[10px] font-mono opacity-50 uppercase tracking-[0.2em] mb-1">Final Performance</span>
+              <div className="text-4xl font-mono font-black tracking-tighter" style={{ color: "hsl(var(--primary))" }}>
+                {finalScore.toLocaleString()}
+              </div>
+              <div className="flex gap-4 mt-2 text-[10px] font-mono opacity-80 uppercase tracking-widest">
+                <span>Mice: {catches}/{MAX_CATCHES}</span>
+                {gameState === "won" && (
+                  <>
+                    <span className="opacity-30">|</span>
+                    <span className="text-yellow-400">Bonus: +{timeLeft * 10}</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <p className="font-mono text-xs opacity-60 text-center max-w-[280px]" style={{ color: "hsl(var(--primary))" }}>
+              {gameState === "won" 
+                ? `Exceptional hunting! All targets neutralized before the timer expired.` 
+                : `The mouse was too fast. Focus on your pounce timing to secure the catch.`}
             </p>
             <div className="flex gap-3 mt-2">
               <button onClick={startGame}
