@@ -2,8 +2,13 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import gsap from "gsap"
 
 type GameState = "idle" | "playing" | "won" | "lost"
-type MouseBehavior = "roaming" | "fleeing" | "hiding"
+type MouseBehavior = "roaming" | "fleeing" | "hiding" | "diving"
 interface Vec2 { x: number; y: number }
+interface MouseObject {
+  pos: Vec2; vel: Vec2; behavior: MouseBehavior; hideTimer: number;
+  roamTarget: Vec2; curHide: DOMRect | null; history: Vec2[]; dots: HTMLDivElement[];
+  el: HTMLDivElement | null; diveTimer: number; boostTimer: number;
+}
 
 const MAX_CATCHES = 5
 const GAME_SECONDS = 90
@@ -30,21 +35,22 @@ export function CatAndMouseGame() {
 
   const containerRef = useRef<HTMLDivElement>(null)
   const catRef = useRef<HTMLDivElement>(null)
-  const mouseRef = useRef<HTMLDivElement>(null)
+  const mouseRef = useRef<HTMLDivElement>(null) // Template for clones
+  const shockwaveRef = useRef<SVGSVGElement>(null)
   const particles = useRef<{ el: HTMLDivElement, vx: number, vy: number, life: number }[]>([])
   const stars = useRef<HTMLDivElement[]>([])
+  const cheeseEl = useRef<HTMLDivElement | null>(null)
 
   // mutable game state (no re-renders)
   const gs = useRef<GameState>("idle")
   const catPos = useRef<Vec2>({ x: 200, y: 400 })
   const catVel = useRef<Vec2>({ x: 0, y: 0 })
-  const mPos = useRef<Vec2>({ x: 800, y: 400 })
-  const mVel = useRef<Vec2>({ x: 0, y: 0 })
-  const mBehavior = useRef<MouseBehavior>("roaming")
-  const mHideTimer = useRef(0)
-  const roamTarget = useRef<Vec2>({ x: 600, y: 300 })
+  const mice = useRef<MouseObject[]>([])
+  const miceHoles = useRef<Vec2[]>([])
+  const cheesePos = useRef<Vec2 | null>(null)
+  const cheeseSpawnTimer = useRef(120)
+
   const hideSpots = useRef<DOMRect[]>([])
-  const curHide = useRef<DOMRect | null>(null)
   const catchCount = useRef(0)
   const timeRef = useRef(GAME_SECONDS)
   const pouncing = useRef(false)
@@ -52,9 +58,7 @@ export function CatAndMouseGame() {
   const keys = useRef<Set<string>>(new Set())
   const timerID = useRef<ReturnType<typeof setInterval> | null>(null)
   const catH = useRef<Vec2[]>([])
-  const mH = useRef<Vec2[]>([])
   const catDots = useRef<HTMLDivElement[]>([])
-  const mouseDots = useRef<HTMLDivElement[]>([])
 
   // ── scan DOM for hide spots ──────────────────────────────────────────────
   const scanSpots = useCallback(() => {
@@ -68,6 +72,39 @@ export function CatAndMouseGame() {
   }, [])
 
   // ── dot factory ─────────────────────────────────────────────────────────
+  // ── helpers ─────────────────────────────────────────────────────────────
+  const spawnText = useCallback((txt: string, x: number, y: number, color = "hsl(var(--primary))") => {
+    if (!containerRef.current) return
+    const d = document.createElement("div")
+    d.innerText = txt
+    d.style.cssText = `position:absolute;left:${x}px;top:${y}px;color:${color};font-family:monospace;font-weight:bold;` +
+      `font-size:14px;pointer-events:none;z-index:50;text-shadow:0 0 10px rgba(0,0,0,0.5);`
+    containerRef.current.appendChild(d)
+    gsap.to(d, { y: -60, opacity: 0, duration: 1.2, onComplete: () => d.remove() })
+  }, [])
+
+  const makeMouse = useCallback((x: number, y: number): MouseObject => {
+    const el = mouseRef.current?.cloneNode(true) as HTMLDivElement
+    if (el && containerRef.current) {
+      el.style.opacity = "1"
+      containerRef.current.appendChild(el)
+    }
+    const dots = Array.from({ length: TRAIL_LEN_MOUSE }, (_, i) => {
+      const d = document.createElement("div")
+      const size = (1 - i / TRAIL_LEN_MOUSE) * 3.5
+      const col = "hsl(var(--primary)/0.5)"
+      d.style.cssText = `position:absolute;top:0;left:0;border-radius:50%;pointer-events:none;` +
+        `width:${size}px;height:${size}px;background:${col};box-shadow:0 0 ${size * 2}px ${col};opacity:0;`
+      containerRef.current?.appendChild(d)
+      return d
+    })
+    return {
+      pos: { x, y }, vel: { x: 0, y: 0 }, behavior: "roaming", hideTimer: 0,
+      roamTarget: { x, y }, curHide: null, history: Array.from({ length: TRAIL_LEN_MOUSE }, () => ({ x, y })),
+      dots, el, diveTimer: 0, boostTimer: 0
+    }
+  }, [])
+
   const makeDots = useCallback(() => {
     if (!containerRef.current) return
     const c = containerRef.current
@@ -79,7 +116,6 @@ export function CatAndMouseGame() {
       return d
     }
     catDots.current = Array.from({ length: TRAIL_LEN_CAT }, (_, i) => make("hsl(var(--primary))", (1 - i / TRAIL_LEN_CAT) * 5))
-    mouseDots.current = Array.from({ length: TRAIL_LEN_MOUSE }, (_, i) => make("hsl(var(--primary)/0.5)", (1 - i / TRAIL_LEN_MOUSE) * 3.5))
 
     // ambient stars
     stars.current = Array.from({ length: 40 }, () => {
@@ -91,6 +127,10 @@ export function CatAndMouseGame() {
       c.appendChild(d)
       return d
     })
+    
+    // mouse holes
+    const W = window.innerWidth; const H = window.innerHeight
+    miceHoles.current = [{x: 60, y: 60}, {x: W-60, y: 60}, {x: 60, y: H-60}, {x: W-60, y: H-60}]
   }, [])
 
   const spawnExplosion = useCallback((x: number, y: number) => {
@@ -119,8 +159,9 @@ export function CatAndMouseGame() {
     gs.current = result
     setGameState(result)
     if (timerID.current) clearInterval(timerID.current)
-    const targets = [catRef.current, mouseRef.current].filter(Boolean)
+    const targets = [catRef.current, ...mice.current.map(m => m.el)].filter(Boolean) as HTMLDivElement[]
     if (targets.length) gsap.to(targets, { opacity: 0, scale: 0, duration: 0.4 })
+    gsap.to(':root', { '--theme-hue': 142, duration: 1 }) // reset hue
   }, [])
 
   const startGame = useCallback(() => {
@@ -129,32 +170,34 @@ export function CatAndMouseGame() {
     const H = window.innerHeight
     catPos.current = { x: 120, y: H / 2 }
     catVel.current = { x: 0, y: 0 }
-    mPos.current = { x: W - 120, y: H / 2 }
-    mVel.current = { x: 0, y: 0 }
-    mBehavior.current = "roaming"
-    roamTarget.current = { x: W / 2, y: H / 2 }
+    
+    mice.current.forEach(m => { m.el?.remove(); m.dots.forEach(d => d.remove()) })
+    mice.current = [makeMouse(W - 120, H / 2)]
+    
     catchCount.current = 0
     timeRef.current = GAME_SECONDS
     pounceCD.current = 0
     pouncing.current = false
-    curHide.current = null
     catH.current = Array.from({ length: TRAIL_LEN_CAT }, () => ({ ...catPos.current }))
-    mH.current = Array.from({ length: TRAIL_LEN_MOUSE }, () => ({ ...mPos.current }))
     setCatches(0)
     setTimeLeft(GAME_SECONDS)
     setPounceReady(true)
     gs.current = "playing"
     setGameState("playing")
-    gsap.killTweensOf([catRef.current, mouseRef.current])
+    gsap.killTweensOf([catRef.current, ...mice.current.map(m => m.el)])
     if (catRef.current) { catRef.current.style.opacity = "0"; catRef.current.style.transform = "scale(0)"; gsap.to(catRef.current, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(2)" }) }
-    if (mouseRef.current) { mouseRef.current.style.opacity = "0"; mouseRef.current.style.transform = "scale(0)"; gsap.to(mouseRef.current, { opacity: 1, scale: 1, duration: 0.5, delay: 0.1, ease: "back.out(2)" }) }
     if (timerID.current) clearInterval(timerID.current)
     timerID.current = setInterval(() => {
       timeRef.current -= 1
       setTimeLeft(timeRef.current)
       if (timeRef.current <= 0) { endGame("lost") }
+      // theme shift
+      if (timeRef.current < 20) {
+        const hue = lerp(142, 0, (20 - timeRef.current) / 20)
+        document.documentElement.style.setProperty('--theme-hue', String(hue))
+      }
     }, 1000)
-  }, [scanSpots, endGame])
+  }, [scanSpots, endGame, makeMouse])
 
   const resetToIdle = useCallback(() => {
     if (timerID.current) clearInterval(timerID.current)
@@ -162,8 +205,10 @@ export function CatAndMouseGame() {
     setGameState("idle")
     setCatches(0)
     setTimeLeft(GAME_SECONDS)
-    const targets = [catRef.current, mouseRef.current].filter(Boolean)
+    const targets = [catRef.current, cheeseEl.current, ...mice.current.map(m => m.el)].filter(Boolean) as HTMLDivElement[]
     if (targets.length) gsap.to(targets, { opacity: 0, scale: 0, duration: 0.3 })
+    cheesePos.current = null
+    gsap.to(':root', { '--theme-hue': 142, duration: 1 })
   }, [])
 
   // ── keys ─────────────────────────────────────────────────────────────────
@@ -175,9 +220,23 @@ export function CatAndMouseGame() {
       }
       if (e.key === " " && gs.current === "playing" && !pouncing.current && pounceCD.current <= 0) {
         pouncing.current = true
-        const dx = mPos.current.x - catPos.current.x
-        const dy = mPos.current.y - catPos.current.y
+        // find nearest mouse to aim at
+        let target = { x: catPos.current.x + catVel.current.x * 10, y: catPos.current.y + catVel.current.y * 10 }
+        if (mice.current.length > 0) {
+          const nearest = mice.current.reduce((prev, curr) => vdist(catPos.current, curr.pos) < vdist(catPos.current, prev.pos) ? curr : prev)
+          target = nearest.pos
+        }
+        const dx = target.x - catPos.current.x
+        const dy = target.y - catPos.current.y
         const d = Math.hypot(dx, dy) || 1
+        // Shockwave effect
+        if (shockwaveRef.current) {
+          gsap.fromTo(shockwaveRef.current, 
+            { scale: 0.2, opacity: 1, x: catPos.current.x, y: catPos.current.y - window.scrollY },
+            { scale: 3.5, opacity: 0, duration: 0.6, ease: "power2.out" }
+          )
+        }
+        spawnText("SPRINT!", catPos.current.x, catPos.current.y - window.scrollY - 30)
         catVel.current = { x: (dx / d) * POUNCE_SPEED, y: (dy / d) * POUNCE_SPEED }
         pounceCD.current = POUNCE_CD * 60
         setPounceReady(false)
@@ -202,7 +261,7 @@ export function CatAndMouseGame() {
     const ticker = gsap.ticker.add(() => {
       if (gs.current !== "playing") {
         catDots.current.forEach(d => { d.style.opacity = "0" })
-        mouseDots.current.forEach(d => { d.style.opacity = "0" })
+        mice.current.forEach(m => m.dots.forEach(d => { d.style.opacity = "0" }))
         return
       }
       const dt = Math.min(gsap.ticker.deltaRatio(), 3)
@@ -237,174 +296,169 @@ export function CatAndMouseGame() {
       catPos.current.x = clamp(catPos.current.x, PAD, W - PAD)
       catPos.current.y = clamp(catPos.current.y, sY + PAD, sY + vH - PAD)
 
-      // ── mouse AI ──
-      const dist = vdist(catPos.current, mPos.current)
-
-      if (mBehavior.current === "roaming") {
-        if (dist < FLEE_RADIUS) { mBehavior.current = "fleeing" }
-        const rdx = roamTarget.current.x - mPos.current.x
-        const rdy = roamTarget.current.y - mPos.current.y
-        const rd = Math.hypot(rdx, rdy)
-        if (rd < 30) {
-          roamTarget.current = { x: PAD + Math.random() * (W - 2 * PAD), y: sY + PAD + Math.random() * (vH - 2 * PAD) }
-        }
-        if (rd > 0) {
-          mVel.current.x = lerp(mVel.current.x, (rdx / rd) * MOUSE_ROAM_SPEED * dt, 0.08)
-          mVel.current.y = lerp(mVel.current.y, (rdy / rd) * MOUSE_ROAM_SPEED * dt, 0.08)
-        }
-      } else if (mBehavior.current === "fleeing") {
-        if (dist > FLEE_RADIUS * 1.5) {
-          // decide to hide or roam
-          const eligible = hideSpots.current.filter(r => {
-            const cx = r.left + r.width / 2
-            const cy = r.top + sY + r.height / 2
-            return vdist({ x: cx, y: cy }, catPos.current) > 160
-          })
-          if (eligible.length > 0 && Math.random() < 0.45) {
-            // pick nearest eligible spot
-            eligible.sort((a, b) => {
-              const ac = { x: a.left + a.width / 2, y: a.top + sY + a.height / 2 }
-              const bc = { x: b.left + b.width / 2, y: b.top + sY + b.height / 2 }
-              return vdist(mPos.current, ac) - vdist(mPos.current, bc)
-            })
-            curHide.current = eligible[0]
-            mBehavior.current = "hiding"
-            mHideTimer.current = 0
-          } else {
-            mBehavior.current = "roaming"
-            roamTarget.current = { x: PAD + Math.random() * (W - 2 * PAD), y: sY + PAD + Math.random() * (vH - 2 * PAD) }
-          }
-        }
-        const fDx = mPos.current.x - catPos.current.x
-        const fDy = mPos.current.y - catPos.current.y
-        const fD = Math.hypot(fDx, fDy) || 1
-        mVel.current.x = lerp(mVel.current.x, (fDx / fD) * MOUSE_FLEE_SPEED * dt, 0.14)
-        mVel.current.y = lerp(mVel.current.y, (fDy / fD) * MOUSE_FLEE_SPEED * dt, 0.14)
-      } else if (mBehavior.current === "hiding") {
-        const spot = curHide.current
-        if (!spot) { mBehavior.current = "roaming" }
-        else {
-          const sc = { x: spot.left + spot.width / 2, y: spot.top + sY + spot.height / 2 }
-          const dSpot = vdist(mPos.current, sc)
-          if (dSpot > 20) {
-            const sx = sc.x - mPos.current.x; const sy = sc.y - mPos.current.y
-            const sd = Math.hypot(sx, sy) || 1
-            mVel.current.x = lerp(mVel.current.x, (sx / sd) * MOUSE_FLEE_SPEED * dt * 0.9, 0.1)
-            mVel.current.y = lerp(mVel.current.y, (sy / sd) * MOUSE_FLEE_SPEED * dt * 0.9, 0.1)
-          } else {
-            mVel.current.x *= 0.75; mVel.current.y *= 0.75
-            mHideTimer.current += dt
-            if (mHideTimer.current > 120 || vdist(sc, catPos.current) < 110) {
-              curHide.current = null; mBehavior.current = "fleeing"; mHideTimer.current = 0
-            }
-          }
-          if (dist < FLEE_RADIUS * 0.6) { curHide.current = null; mBehavior.current = "fleeing" }
-        }
-      }
-
-      mPos.current.x += mVel.current.x
-      mPos.current.y += mVel.current.y
-      mPos.current.x = clamp(mPos.current.x, PAD, W - PAD)
-      mPos.current.y = clamp(mPos.current.y, sY + PAD, sY + vH - PAD)
-
-      // ── catch ──
-      const finalDist = vdist(catPos.current, mPos.current)
-      if (finalDist < 42) {
-        catchCount.current++
-        setCatches(catchCount.current)
-        spawnExplosion(mPos.current.x, mPos.current.y - sY)
-        const bx = mPos.current.x - catPos.current.x; const by = mPos.current.y - catPos.current.y
-        const bd = Math.hypot(bx, by) || 1
-        mVel.current = { x: (bx / bd) * 9, y: (by / bd) * 9 }
-        mBehavior.current = "fleeing"
-        catVel.current.x *= 0.3; catVel.current.y *= 0.3
-        if (catRef.current) {
-          catRef.current.style.filter = "drop-shadow(0 0 25px white)"
-          setTimeout(() => { if (catRef.current) catRef.current.style.filter = "drop-shadow(0 0 12px hsl(var(--primary)/0.8))" }, 600)
-        }
-        if (catchCount.current >= MAX_CATCHES) endGame("won")
-      }
-
       // ── render cat ──
-      const catSpd = Math.hypot(catVel.current.x, catVel.current.y)
-      const mSpd = Math.hypot(mVel.current.x, mVel.current.y)
-      const catAng = catSpd > 0.2 ? Math.atan2(catVel.current.y, catVel.current.x) * (180 / Math.PI) + 90 : null
-      const mAng = mSpd > 0.2 ? Math.atan2(mVel.current.y, mVel.current.x) * (180 / Math.PI) + 90 : null
-
       if (catRef.current) {
+        const catSpd = Math.hypot(catVel.current.x, catVel.current.y)
+        const catAng = catSpd > 0.2 ? Math.atan2(catVel.current.y, catVel.current.x) * (180 / Math.PI) + 90 : 0
         const catVpX = catPos.current.x - 30
         const catVpY = catPos.current.y - sY - 30
-        const catRz = catAng ?? 0
         const catRx = clamp(-catVel.current.y * 3, -40, 40)
         const catRy = clamp(catVel.current.x * 3, -40, 40)
         const catSy = clamp(1 + catSpd * 0.04, 1, 1.45)
         const catSx = clamp(1 - catSpd * 0.015, 0.68, 1)
         catRef.current.style.left = `${catVpX}px`
         catRef.current.style.top = `${catVpY}px`
-        catRef.current.style.transform = `perspective(800px) rotateX(${catRx}deg) rotateY(${catRy}deg) rotateZ(${catRz}deg) scaleX(${catSx}) scaleY(${catSy})`
+        catRef.current.style.transform = `perspective(800px) rotateX(${catRx}deg) rotateY(${catRy}deg) rotateZ(${catAng}deg) scaleX(${catSx}) scaleY(${catSy})`
       }
-
-      const isHiding = mBehavior.current === "hiding" && curHide.current !== null &&
-        vdist(mPos.current, { x: curHide.current.left + curHide.current.width / 2, y: curHide.current.top + sY + curHide.current.height / 2 }) < 60
-
-      if (mouseRef.current) {
-        const mVpX = mPos.current.x - 18
-        const mVpY = mPos.current.y - sY - 18
-        const mRz = mAng ?? 0
-        const mRx = clamp(-mVel.current.y * 4, -45, 45)
-        const mRy = clamp(mVel.current.x * 4, -45, 45)
-        const mSy = clamp(1 + mSpd * 0.05, 1, 1.55)
-        const mSx = clamp(1 - mSpd * 0.02, 0.68, 1)
-        mouseRef.current.style.left = `${mVpX}px`
-        mouseRef.current.style.top = `${mVpY}px`
-        mouseRef.current.style.opacity = isHiding ? "0.28" : "1"
-        mouseRef.current.style.filter = isHiding ? "drop-shadow(0 0 3px hsl(var(--primary)/0.2))" : "drop-shadow(0 0 8px hsl(var(--primary)/0.5))"
-        mouseRef.current.style.transform = `perspective(800px) rotateX(${mRx}deg) rotateY(${mRy}deg) rotateZ(${mRz}deg) scaleX(${mSx}) scaleY(${mSy})`
-      }
-
-      // update particles
-      for (let i = particles.current.length - 1; i >= 0; i--) {
-        const p = particles.current[i]
-        p.life -= 0.03 * dt
-        if (p.life <= 0) {
-          p.el.remove()
-          particles.current.splice(i, 1)
-          continue
-        }
-        const curX = parseFloat(p.el.style.left)
-        const curY = parseFloat(p.el.style.top)
-        p.el.style.left = `${curX + p.vx * dt}px`
-        p.el.style.top = `${curY + p.vy * dt}px`
-        p.el.style.opacity = String(p.life)
-        p.el.style.transform = `scale(${p.life})`
-      }
-
-      // drift stars
-      stars.current.forEach((s) => {
-        const curTop = parseFloat(s.style.top) || 0
-        s.style.top = `${(curTop + 0.02 * dt) % 100}%`
-      })
 
       // trails
       catH.current.unshift({ x: catPos.current.x, y: catPos.current.y - sY })
       catH.current.length = TRAIL_LEN_CAT
-      mH.current.unshift({ x: mPos.current.x, y: mPos.current.y - sY })
-      mH.current.length = TRAIL_LEN_MOUSE
-
       catDots.current.forEach((d, i) => {
         const h = catH.current[i]
         if (h) { d.style.transform = `translate(${h.x - 2.5}px,${h.y - 2.5}px)`; d.style.opacity = String((1 - i / TRAIL_LEN_CAT) * 0.65) }
       })
-      mouseDots.current.forEach((d, i) => {
-        const h = mH.current[i]
-        if (h) { d.style.transform = `translate(${h.x - 1.75}px,${h.y - 1.75}px)`; d.style.opacity = isHiding ? "0" : String((1 - i / TRAIL_LEN_MOUSE) * 0.5) }
+
+      // ── mice engine ──
+      mice.current.forEach((m) => {
+        const dist = vdist(catPos.current, m.pos)
+        
+        // boost timer
+        if (m.boostTimer > 0) {
+          m.boostTimer -= dt
+          if (m.boostTimer < 0) m.boostTimer = 0
+        }
+
+        const curSpdMut = m.boostTimer > 0 ? 1.6 : 1.0
+
+        if (m.behavior === "roaming") {
+          if (dist < FLEE_RADIUS) { m.behavior = "fleeing"; spawnText("Eek!", m.pos.x, m.pos.y - sY, "white") }
+          const rdx = m.roamTarget.x - m.pos.x; const rdy = m.roamTarget.y - m.pos.y
+          const rd = Math.hypot(rdx, rdy)
+          if (rd < 30) {
+            m.roamTarget = { x: PAD + Math.random() * (W - 2 * PAD), y: sY + PAD + Math.random() * (vH - 2 * PAD) }
+          }
+          if (rd > 0) {
+            m.vel.x = lerp(m.vel.x, (rdx / rd) * MOUSE_ROAM_SPEED * dt * curSpdMut, 0.08)
+            m.vel.y = lerp(m.vel.y, (rdy / rd) * MOUSE_ROAM_SPEED * dt * curSpdMut, 0.08)
+          }
+        } else if (m.behavior === "fleeing") {
+          if (dist > FLEE_RADIUS * 1.5) {
+            const eligible = hideSpots.current.filter(r => vdist({ x: r.left + r.width / 2, y: r.top + sY + r.height / 2 }, catPos.current) > 160)
+            if (eligible.length > 0 && Math.random() < 0.45) {
+              eligible.sort((a, b) => vdist(m.pos, {x: a.left+a.width/2, y: a.top+sY+a.height/2}) - vdist(m.pos, {x: b.left+b.width/2, y: b.top+sY+b.height/2}))
+              m.curHide = eligible[0]; m.behavior = "hiding"; m.hideTimer = 0
+            } else {
+              m.behavior = "roaming"
+              m.roamTarget = { x: PAD + Math.random() * (W - 2 * PAD), y: sY + PAD + Math.random() * (vH - 2 * PAD) }
+            }
+          }
+          // check holes
+          miceHoles.current.forEach(h => {
+            if (vdist(m.pos, {x: h.x, y: h.y + sY}) < 40 && Math.random() < 0.1) {
+              m.behavior = "diving"; m.diveTimer = 0; spawnText("DIVE!", m.pos.x, m.pos.y - sY, "#888")
+            }
+          })
+          const fDx = m.pos.x - catPos.current.x; const fDy = m.pos.y - catPos.current.y
+          const fD = Math.hypot(fDx, fDy) || 1
+          m.vel.x = lerp(m.vel.x, (fDx / fD) * MOUSE_FLEE_SPEED * dt * curSpdMut, 0.14)
+          m.vel.y = lerp(m.vel.y, (fDy / fD) * MOUSE_FLEE_SPEED * dt * curSpdMut, 0.14)
+        } else if (m.behavior === "hiding") {
+          if (!m.curHide) { m.behavior = "roaming" }
+          else {
+            const sc = { x: m.curHide.left + m.curHide.width / 2, y: m.curHide.top + sY + m.curHide.height / 2 }
+            const dSpot = vdist(m.pos, sc)
+            if (dSpot > 20) {
+              const sx = sc.x - m.pos.x; const sy = sc.y - m.pos.y
+              const sd = Math.hypot(sx, sy) || 1
+              m.vel.x = lerp(m.vel.x, (sx / sd) * MOUSE_FLEE_SPEED * dt * 0.9 * curSpdMut, 0.1)
+              m.vel.y = lerp(m.vel.y, (sy / sd) * MOUSE_FLEE_SPEED * dt * 0.9 * curSpdMut, 0.1)
+            } else {
+              m.vel.x *= 0.75; m.vel.y *= 0.75; m.hideTimer += dt
+              if (m.hideTimer > 120 || vdist(sc, catPos.current) < 110) { m.curHide = null; m.behavior = "fleeing"; m.hideTimer = 0 }
+            }
+            if (dist < FLEE_RADIUS * 0.6) { m.curHide = null; m.behavior = "fleeing" }
+          }
+        } else if (m.behavior === "diving") {
+          m.vel.x *= 0.8; m.vel.y *= 0.8; m.diveTimer += dt
+          if (m.diveTimer > 30) {
+            const nextHole = miceHoles.current[Math.floor(Math.random() * miceHoles.current.length)]
+            m.pos = { x: nextHole.x, y: nextHole.y + sY }
+            m.behavior = "fleeing"; m.diveTimer = 0
+          }
+        }
+
+        m.pos.x += m.vel.x; m.pos.y += m.vel.y
+        m.pos.x = clamp(m.pos.x, PAD, W - PAD); m.pos.y = clamp(m.pos.y, sY + PAD, sY + vH - PAD)
+
+        // catch collision
+        if (vdist(catPos.current, m.pos) < 42 && m.behavior !== "diving") {
+          catchCount.current++; setCatches(catchCount.current)
+          spawnExplosion(m.pos.x, m.pos.y - sY)
+          spawnText("GOTCHA!", m.pos.x, m.pos.y - sY, "hsl(var(--primary))")
+          if (catRef.current) { catRef.current.style.filter = "drop-shadow(0 0 25px white)"; setTimeout(() => { if (catRef.current) catRef.current.style.filter = "drop-shadow(0 0 12px hsl(var(--primary)/0.8))" }, 600) }
+          // Respawn or Win
+          if (catchCount.current >= MAX_CATCHES) { endGame("won") }
+          else {
+            const startHole = miceHoles.current[Math.floor(Math.random() * miceHoles.current.length)]
+            m.pos = { x: startHole.x, y: startHole.y + sY }
+            m.vel = { x: 0, y: 0 }; m.behavior = "roaming"
+            if (catchCount.current === 3) mice.current.push(makeMouse(W / 2, sY + vH / 2))
+          }
+        }
+
+        // cheese collision
+        if (cheesePos.current && vdist(m.pos, { x: cheesePos.current.x, y: cheesePos.current.y + sY }) < 35) {
+          m.boostTimer = 300; cheesePos.current = null; if (cheeseEl.current) cheeseEl.current.style.opacity = "0"
+          spawnText("ZOOM!", m.pos.x, m.pos.y - sY, "#fbbf24")
+        }
+
+        // render mouse
+        if (m.el) {
+          const mSpd = Math.hypot(m.vel.x, m.vel.y)
+          const mAng = mSpd > 0.2 ? Math.atan2(m.vel.y, m.vel.x) * (180 / Math.PI) + 90 : 0
+          const isHiding = m.behavior === "hiding"
+          m.el.style.left = `${m.pos.x - 18}px`; m.el.style.top = `${m.pos.y - sY - 18}px`
+          m.el.style.opacity = (m.behavior === "diving" || isHiding) ? "0.2" : "1"
+          m.el.style.transform = `perspective(800px) rotateZ(${mAng}deg) scale(${m.behavior === "diving" ? 0.5 : 1})`
+        }
+
+        // mouse trails
+        m.history.unshift({ x: m.pos.x, y: m.pos.y - sY })
+        m.history.length = TRAIL_LEN_MOUSE
+        m.dots.forEach((d, i) => {
+          const h = m.history[i]
+          if (h) { d.style.transform = `translate(${h.x - 1.75}px,${h.y - 1.75}px)`; d.style.opacity = String((1 - i / TRAIL_LEN_MOUSE) * 0.5) }
+        })
       })
+
+      // ── cheese logic ──
+      if (cheesePos.current) {
+        if (vdist(catPos.current, {x: cheesePos.current.x, y: cheesePos.current.y + sY}) < 45) {
+          timeRef.current += 5; setTimeLeft(timeRef.current); cheesePos.current = null;
+          if (cheeseEl.current) cheeseEl.current.style.opacity = "0"
+          spawnText("+5 SECONDS!", catPos.current.x, catPos.current.y - sY, "#fbbf24")
+        }
+      } else {
+        cheeseSpawnTimer.current -= dt
+        if (cheeseSpawnTimer.current <= 0) {
+          cheesePos.current = { x: PAD + Math.random() * (W - 2 * PAD), y: PAD + Math.random() * (vH - 2 * PAD) }
+          cheeseSpawnTimer.current = 700 + Math.random() * 400
+          if (cheeseEl.current) {
+            cheeseEl.current.style.left = `${cheesePos.current.x - 15}px`; cheeseEl.current.style.top = `${cheesePos.current.y - 15}px`
+            cheeseEl.current.style.opacity = "1"; gsap.fromTo(cheeseEl.current, {scale: 0}, {scale: 1, duration: 0.5, ease: "back.out"})
+          }
+        }
+      }
     })
     return () => {
       gsap.ticker.remove(ticker)
       if (timerID.current) clearInterval(timerID.current)
       catDots.current.forEach(d => d.remove())
-      mouseDots.current.forEach(d => d.remove())
+      mice.current.forEach(m => {
+        m.el?.remove()
+        m.dots.forEach(d => d.remove())
+      })
     }
   }, [makeDots, endGame])
 
@@ -414,6 +468,40 @@ export function CatAndMouseGame() {
     <>
       {/* ── game layer ── */}
       <div ref={containerRef} className="fixed inset-0 pointer-events-none z-[5] overflow-hidden hidden md:block" aria-hidden="true">
+        {/* Mouse Holes (High-Fidelity Recessed Design) */}
+        {gameState !== "idle" && miceHoles.current.map((h, i) => (
+          <div key={i} className="absolute w-[80px] h-[45px] rounded-[50%] pointer-events-none"
+            style={{ 
+              left: h.x-40, top: h.y-22, 
+              background: "#050505",
+              boxShadow: `
+                inset 0 10px 20px rgba(0,0,0,0.9), 
+                inset 0 -4px 10px rgba(0,0,0,0.8),
+                inset 0 1px 1px rgba(255,255,255,0.05),
+                0 2px 3px rgba(255,255,255,0.08)
+              `,
+              border: "1px solid #111",
+              borderTop: "3px solid #000",
+              transform: "perspective(500px) rotateX(8deg)"
+            }}>
+             <div className="absolute inset-0 opacity-10" 
+               style={{ background: "radial-gradient(circle at 50% 30%, hsl(var(--primary)) 0%, transparent 80%)" }} />
+             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[70%] h-[2px] bg-black/60 rounded-full blur-[1px]" />
+          </div>
+        ))}
+        {/* Cheese */}
+        <div ref={cheeseEl} className="absolute w-[30px] h-[30px] opacity-0 z-10" style={{ left: 0, top: 0 }}>
+          <svg viewBox="0 0 100 100" className="w-full h-full text-yellow-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]">
+            <path d="M10 80 L90 80 L50 20 Z" fill="currentColor" />
+            <circle cx="40" cy="55" r="5" fill="black" opacity="0.2" />
+            <circle cx="60" cy="65" r="4" fill="black" opacity="0.2" />
+            <circle cx="50" cy="45" r="3" fill="black" opacity="0.2" />
+          </svg>
+        </div>
+        {/* Shockwave */}
+        <svg ref={shockwaveRef} className="absolute pointer-events-none opacity-0 z-20" width="100" height="100" style={{ transform: "translate(-50%, -50%)" }}>
+           <circle cx="50" cy="50" r="45" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" />
+        </svg>
         {/* Cat Player SVG */}
         <div ref={catRef} className="absolute w-[60px] h-[60px]" style={{ opacity: 0, filter: "drop-shadow(0 0 12px hsl(var(--primary)/0.8))", top: 0, left: 0 }}>
           <svg viewBox="0 0 100 100" fill="none" className="w-full h-full" style={{ transformOrigin: "center" }}>
