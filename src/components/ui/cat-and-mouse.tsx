@@ -22,15 +22,15 @@ function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min
 function vdist(a: Vec2, b: Vec2) { return Math.hypot(a.x - b.x, a.y - b.y) }
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t }
 
-export function SpaceCombatMission() {
+export function CatAndMouseGame() {
   const [gameState, setGameState] = useState<GameState>("idle")
   const [catches, setCatches] = useState(0)
   const [timeLeft, setTimeLeft] = useState(GAME_SECONDS)
   const [pounceReady, setPounceReady] = useState(true)
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const jetRef = useRef<HTMLDivElement>(null)
-  const missileRef = useRef<HTMLDivElement>(null)
+  const catRef = useRef<HTMLDivElement>(null)
+  const mouseRef = useRef<HTMLDivElement>(null)
   const particles = useRef<{ el: HTMLDivElement, vx: number, vy: number, life: number }[]>([])
   const stars = useRef<HTMLDivElement[]>([])
 
@@ -119,7 +119,7 @@ export function SpaceCombatMission() {
     gs.current = result
     setGameState(result)
     if (timerID.current) clearInterval(timerID.current)
-    const targets = [jetRef.current, missileRef.current].filter(Boolean)
+    const targets = [catRef.current, mouseRef.current].filter(Boolean)
     if (targets.length) gsap.to(targets, { opacity: 0, scale: 0, duration: 0.4 })
   }, [])
 
@@ -145,9 +145,9 @@ export function SpaceCombatMission() {
     setPounceReady(true)
     gs.current = "playing"
     setGameState("playing")
-    gsap.killTweensOf([jetRef.current, missileRef.current])
-    if (jetRef.current) { jetRef.current.style.opacity = "0"; jetRef.current.style.transform = "scale(0)"; gsap.to(jetRef.current, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(2)" }) }
-    if (missileRef.current) { missileRef.current.style.opacity = "0"; missileRef.current.style.transform = "scale(0)"; gsap.to(missileRef.current, { opacity: 1, scale: 1, duration: 0.5, delay: 0.1, ease: "back.out(2)" }) }
+    gsap.killTweensOf([catRef.current, mouseRef.current])
+    if (catRef.current) { catRef.current.style.opacity = "0"; catRef.current.style.transform = "scale(0)"; gsap.to(catRef.current, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(2)" }) }
+    if (mouseRef.current) { mouseRef.current.style.opacity = "0"; mouseRef.current.style.transform = "scale(0)"; gsap.to(mouseRef.current, { opacity: 1, scale: 1, duration: 0.5, delay: 0.1, ease: "back.out(2)" }) }
     if (timerID.current) clearInterval(timerID.current)
     timerID.current = setInterval(() => {
       timeRef.current -= 1
@@ -162,7 +162,7 @@ export function SpaceCombatMission() {
     setGameState("idle")
     setCatches(0)
     setTimeLeft(GAME_SECONDS)
-    const targets = [jetRef.current, missileRef.current].filter(Boolean)
+    const targets = [catRef.current, mouseRef.current].filter(Boolean)
     if (targets.length) gsap.to(targets, { opacity: 0, scale: 0, duration: 0.3 })
   }, [])
 
@@ -318,9 +318,9 @@ export function SpaceCombatMission() {
         mVel.current = { x: (bx / bd) * 9, y: (by / bd) * 9 }
         mBehavior.current = "fleeing"
         catVel.current.x *= 0.3; catVel.current.y *= 0.3
-        if (jetRef.current) {
-          jetRef.current.style.filter = "drop-shadow(0 0 25px white)"
-          setTimeout(() => { if (jetRef.current) jetRef.current.style.filter = "drop-shadow(0 0 12px hsl(var(--primary)/0.8))" }, 600)
+        if (catRef.current) {
+          catRef.current.style.filter = "drop-shadow(0 0 25px white)"
+          setTimeout(() => { if (catRef.current) catRef.current.style.filter = "drop-shadow(0 0 12px hsl(var(--primary)/0.8))" }, 600)
         }
         if (catchCount.current >= MAX_CATCHES) endGame("won")
       }
@@ -331,7 +331,7 @@ export function SpaceCombatMission() {
       const catAng = catSpd > 0.2 ? Math.atan2(catVel.current.y, catVel.current.x) * (180 / Math.PI) + 90 : null
       const mAng = mSpd > 0.2 ? Math.atan2(mVel.current.y, mVel.current.x) * (180 / Math.PI) + 90 : null
 
-      if (jetRef.current) {
+      if (catRef.current) {
         const catVpX = catPos.current.x - 30
         const catVpY = catPos.current.y - sY - 30
         const catRz = catAng ?? 0
@@ -339,15 +339,15 @@ export function SpaceCombatMission() {
         const catRy = clamp(catVel.current.x * 3, -40, 40)
         const catSy = clamp(1 + catSpd * 0.04, 1, 1.45)
         const catSx = clamp(1 - catSpd * 0.015, 0.68, 1)
-        jetRef.current.style.left = `${catVpX}px`
-        jetRef.current.style.top = `${catVpY}px`
-        jetRef.current.style.transform = `perspective(800px) rotateX(${catRx}deg) rotateY(${catRy}deg) rotateZ(${catRz}deg) scaleX(${catSx}) scaleY(${catSy})`
+        catRef.current.style.left = `${catVpX}px`
+        catRef.current.style.top = `${catVpY}px`
+        catRef.current.style.transform = `perspective(800px) rotateX(${catRx}deg) rotateY(${catRy}deg) rotateZ(${catRz}deg) scaleX(${catSx}) scaleY(${catSy})`
       }
 
       const isHiding = mBehavior.current === "hiding" && curHide.current !== null &&
         vdist(mPos.current, { x: curHide.current.left + curHide.current.width / 2, y: curHide.current.top + sY + curHide.current.height / 2 }) < 60
 
-      if (missileRef.current) {
+      if (mouseRef.current) {
         const mVpX = mPos.current.x - 18
         const mVpY = mPos.current.y - sY - 18
         const mRz = mAng ?? 0
@@ -355,11 +355,11 @@ export function SpaceCombatMission() {
         const mRy = clamp(mVel.current.x * 4, -45, 45)
         const mSy = clamp(1 + mSpd * 0.05, 1, 1.55)
         const mSx = clamp(1 - mSpd * 0.02, 0.68, 1)
-        missileRef.current.style.left = `${mVpX}px`
-        missileRef.current.style.top = `${mVpY}px`
-        missileRef.current.style.opacity = isHiding ? "0.28" : "1"
-        missileRef.current.style.filter = isHiding ? "drop-shadow(0 0 3px hsl(var(--primary)/0.2))" : "drop-shadow(0 0 8px hsl(var(--primary)/0.5))"
-        missileRef.current.style.transform = `perspective(800px) rotateX(${mRx}deg) rotateY(${mRy}deg) rotateZ(${mRz}deg) scaleX(${mSx}) scaleY(${mSy})`
+        mouseRef.current.style.left = `${mVpX}px`
+        mouseRef.current.style.top = `${mVpY}px`
+        mouseRef.current.style.opacity = isHiding ? "0.28" : "1"
+        mouseRef.current.style.filter = isHiding ? "drop-shadow(0 0 3px hsl(var(--primary)/0.2))" : "drop-shadow(0 0 8px hsl(var(--primary)/0.5))"
+        mouseRef.current.style.transform = `perspective(800px) rotateX(${mRx}deg) rotateY(${mRy}deg) rotateZ(${mRz}deg) scaleX(${mSx}) scaleY(${mSy})`
       }
 
       // update particles
@@ -414,36 +414,42 @@ export function SpaceCombatMission() {
     <>
       {/* ── game layer ── */}
       <div ref={containerRef} className="fixed inset-0 pointer-events-none z-[5] overflow-hidden hidden md:block" aria-hidden="true">
-        {/* Fighter Jet SVG */}
-        <div ref={jetRef} className="absolute w-[60px] h-[60px]" style={{ opacity: 0, filter: "drop-shadow(0 0 12px hsl(var(--primary)/0.8))", top: 0, left: 0 }}>
+        {/* Cat Player SVG */}
+        <div ref={catRef} className="absolute w-[60px] h-[60px]" style={{ opacity: 0, filter: "drop-shadow(0 0 12px hsl(var(--primary)/0.8))", top: 0, left: 0 }}>
           <svg viewBox="0 0 100 100" fill="none" className="w-full h-full" style={{ transformOrigin: "center" }}>
             <defs>
-              <radialGradient id="jg"><stop offset="0%" stopColor="hsl(var(--primary)/0.4)" /><stop offset="100%" stopColor="hsl(var(--primary)/0.05)" /></radialGradient>
-              <filter id="jgl"><feGaussianBlur stdDeviation="2.5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+              <linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="white" stopOpacity="0.25" /><stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.1" /></linearGradient>
+              <filter id="cgl"><feGaussianBlur stdDeviation="1.5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
             </defs>
-            {/* Wings */}
-            <path d="M10 65 L40 55 L50 20 L60 55 L90 65 L50 85 Z" fill="url(#jg)" stroke="hsl(var(--primary))" strokeWidth="2.5" filter="url(#jgl)" />
-            <path d="M25 60 L40 55 L50 80 L60 55 L75 60" stroke="hsl(var(--primary)/0.5)" strokeWidth="1" />
-            {/* Cockpit */}
-            <ellipse cx="50" cy="45" rx="8" ry="12" fill="hsl(var(--primary)/0.7)" filter="url(#jgl)" />
-            <path d="M47 40 Q50 35 53 40" stroke="white" strokeWidth="1" opacity="0.6" />
-            {/* Engines */}
-            <rect x="38" y="78" width="6" height="8" rx="1" fill="hsl(var(--primary)/0.4)" stroke="hsl(var(--primary)/0.8)" />
-            <rect x="56" y="78" width="6" height="8" rx="1" fill="hsl(var(--primary)/0.4)" stroke="hsl(var(--primary)/0.8)" />
-            <circle cx="41" cy="85" r="2" fill="hsl(var(--primary))" className="animate-pulse" />
-            <circle cx="59" cy="85" r="2" fill="hsl(var(--primary))" className="animate-pulse" />
+            {/* Ears */}
+            <path d="M28 32 L18 8 L45 25 M72 32 L82 8 L55 25" stroke="hsl(var(--primary))" strokeWidth="3" fill="hsl(var(--primary)/0.2)" strokeLinejoin="round" />
+            {/* Head */}
+            <path d="M20 50 Q20 22 50 22 Q80 22 80 50 Q80 82 50 82 Q20 82 20 50" fill="url(#cg)" stroke="hsl(var(--primary))" strokeWidth="3" filter="url(#cgl)" />
+            {/* Eyes */}
+            <ellipse cx="36" cy="46" rx="5" ry="7" fill="hsl(var(--primary))" className="animate-pulse" />
+            <ellipse cx="64" cy="46" rx="5" ry="7" fill="hsl(var(--primary))" className="animate-pulse" />
+            <circle cx="36" cy="44" r="1.5" fill="white" opacity="0.8" />
+            <circle cx="64" cy="44" r="1.5" fill="white" opacity="0.8" />
+            {/* Nose & Mouth */}
+            <path d="M48 58 L52 58 L50 62 Z" fill="hsl(var(--primary))" />
+            <path d="M43 68 Q50 75 57 68" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" />
+            {/* Whiskers */}
+            <path d="M22 55 L2 50 M22 62 L2 65 M78 55 L98 50 M78 62 L98 65" stroke="hsl(var(--primary)/0.6)" strokeWidth="1.5" />
           </svg>
         </div>
-        {/* Missile SVG */}
-        <div ref={missileRef} className="absolute w-[36px] h-[36px]" style={{ opacity: 0, filter: "drop-shadow(0 0 8px hsl(var(--primary)/0.5))", top: 0, left: 0 }}>
+        {/* Mouse Target SVG */}
+        <div ref={mouseRef} className="absolute w-[36px] h-[36px]" style={{ opacity: 0, filter: "drop-shadow(0 0 8px hsl(var(--primary)/0.5))", top: 0, left: 0 }}>
           <svg viewBox="0 0 100 100" fill="none" className="w-full h-full" style={{ transformOrigin: "center" }}>
-            <defs>
-              <radialGradient id="ms"><stop offset="0%" stopColor="white" /><stop offset="100%" stopColor="hsl(var(--primary)/0.4)" /></radialGradient>
-            </defs>
-            {/* Tip/Burner */}
-            <path d="M50 10 L35 40 L50 90 L65 40 Z" fill="url(#ms)" stroke="hsl(var(--primary))" strokeWidth="3" filter="url(#jgl)" />
-            <path d="M42 35 L50 25 L58 35" stroke="hsl(var(--primary)/0.6)" strokeWidth="1.5" />
-            <circle cx="50" cy="92" r="4" fill="hsl(var(--primary))" className="animate-ping" />
+            {/* Mouse Body */}
+            <ellipse cx="50" cy="60" rx="25" ry="18" fill="hsl(var(--primary)/0.1)" stroke="hsl(var(--primary))" strokeWidth="2.5" />
+            {/* Mouse Ears */}
+            <circle cx="35" cy="40" r="10" fill="hsl(var(--primary)/0.05)" stroke="hsl(var(--primary))" strokeWidth="2" />
+            <circle cx="65" cy="40" r="10" fill="hsl(var(--primary)/0.05)" stroke="hsl(var(--primary))" strokeWidth="2" />
+            {/* Tail */}
+            <path d="M50 78 Q50 95 75 90" stroke="hsl(var(--primary)/0.8)" strokeWidth="2" fill="none" strokeDasharray="4 2" />
+            {/* Eyes */}
+            <circle cx="42" cy="58" r="2" fill="hsl(var(--primary))" />
+            <circle cx="58" cy="58" r="2" fill="hsl(var(--primary))" />
           </svg>
         </div>
       </div>
@@ -453,14 +459,14 @@ export function SpaceCombatMission() {
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[50] pointer-events-none hidden md:flex flex-col items-center gap-1.5">
           <div className="flex items-center gap-4 px-5 py-2.5 font-mono text-xs border backdrop-blur-xl rounded-full"
             style={{ background: "hsl(var(--primary)/0.08)", borderColor: "hsl(var(--primary)/0.4)", color: "hsl(var(--primary))" }}>
-            <span>🚀 <strong>{catches}</strong>/{MAX_CATCHES} INTERCEPTIONS</span>
+            <span>🐈 <strong>{catches}</strong>/{MAX_CATCHES} MICE CAUGHT</span>
             <span className="w-px h-3 opacity-30 bg-current" />
             <span className={`font-bold tabular-nums ${timeLeft <= 15 ? "text-red-400 animate-pulse" : ""}`}>⏱ {fmt(timeLeft)}</span>
             <span className="w-px h-3 opacity-30 bg-current" />
-            <span className={pounceReady ? "text-white" : "opacity-40"}>⚡ {pounceReady ? "AFTERBURNER [space]" : `recharging ${(pounceCD.current / 60).toFixed(1)}s`}</span>
+            <span className={pounceReady ? "text-white" : "opacity-40"}>⚡ {pounceReady ? "POUNCE [space]" : `resting ${(pounceCD.current / 60).toFixed(1)}s`}</span>
           </div>
           <p className="text-[10px] font-mono opacity-40 uppercase tracking-widest" style={{ color: "hsl(var(--primary))" }}>
-            WASD to pilot · intercept incoming missiles · missiles utilize evasive maneuvers!
+            WASD to chase · catch the elusive mouse · mice utilize hidden tunnels!
           </p>
           <button
             onClick={resetToIdle}
@@ -480,15 +486,21 @@ export function SpaceCombatMission() {
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 28px hsl(var(--primary)/0.4)"; (e.currentTarget as HTMLElement).style.borderColor = "hsl(var(--primary))" }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 0 18px hsl(var(--primary)/0.15)"; (e.currentTarget as HTMLElement).style.borderColor = "hsl(var(--primary)/0.5)" }}
         >
-          <div className="w-5 h-5 flex-shrink-0">
-            <svg viewBox="0 0 100 100" fill="none" className="w-full h-full text-primary" style={{ filter: "drop-shadow(0 0 5px currentColor)" }}>
-              <path d="M10 65 L40 55 L50 20 L60 55 L90 65 L50 85 Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="4" />
+          <div className="w-6 h-6 flex-shrink-0">
+            <svg viewBox="0 0 100 100" fill="none" className="w-full h-full" style={{ color: "currentColor" }}>
+              <path d="M28 32 L18 8 L45 25 M72 32 L82 8 L55 25" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
+              <path d="M20 50 Q20 22 50 22 Q80 22 80 50 Q80 82 50 82 Q20 82 20 50" stroke="currentColor" strokeWidth="5" />
+              <ellipse cx="36" cy="46" rx="5" ry="7" fill="currentColor" />
+              <ellipse cx="64" cy="46" rx="5" ry="7" fill="currentColor" />
             </svg>
           </div>
-          <span className="relative z-10 px-1">LAUNCH MISSION</span>
-          <div className="w-4 h-4 flex-shrink-0">
-            <svg viewBox="0 0 100 100" fill="none" className="w-full h-full text-primary" style={{ filter: "drop-shadow(0 0 5px currentColor)" }}>
-              <path d="M50 10 L35 40 L50 90 L65 40 Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="4" />
+          <span className="relative z-10 px-1">START CHASE</span>
+          <div className="w-6 h-6 flex-shrink-0">
+            <svg viewBox="0 0 100 100" fill="none" className="w-full h-full" style={{ color: "currentColor" }}>
+              <ellipse cx="50" cy="60" rx="30" ry="22" stroke="currentColor" strokeWidth="5" />
+              <circle cx="35" cy="40" r="12" stroke="currentColor" strokeWidth="4" />
+              <circle cx="65" cy="40" r="12" stroke="currentColor" strokeWidth="4" />
+              <path d="M50 82 Q50 95 75 90" stroke="currentColor" strokeWidth="4" fill="none" />
             </svg>
           </div>
           <span className="w-1.5 h-3 bg-current animate-pulse ml-1 opacity-60" />
@@ -500,12 +512,12 @@ export function SpaceCombatMission() {
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm pointer-events-auto">
           <div className="flex flex-col items-center gap-5 px-12 py-10 border backdrop-blur-2xl"
             style={{ background: "hsl(var(--primary)/0.07)", borderColor: "hsl(var(--primary)/0.5)", boxShadow: "0 0 80px hsl(var(--primary)/0.25)" }}>
-            <div className="text-6xl">{gameState === "won" ? "☄️" : "💥"}</div>
+            <div className="text-6xl">{gameState === "won" ? "🏆" : "🐭"}</div>
             <div className="font-mono font-bold text-3xl tracking-widest" style={{ color: gameState === "won" ? "hsl(var(--primary))" : "#f87171" }}>
-              {gameState === "won" ? "MISSION SUCCESS!" : "MISSION FAILED!"}
+              {gameState === "won" ? "CAT'S FEAST!" : "MOUSE ESCAPED!"}
             </div>
             <p className="font-mono text-sm opacity-60" style={{ color: "hsl(var(--primary))" }}>
-              {gameState === "won" ? `All incoming missiles intercepted successfully.` : `Intercepted ${catches}/${MAX_CATCHES} targets before breach.`}
+              {gameState === "won" ? `All mice have been triumphantly caught.` : `The mouse outsmarted you. Caught ${catches}/${MAX_CATCHES}.`}
             </p>
             <div className="flex gap-3 mt-2">
               <button onClick={startGame}
