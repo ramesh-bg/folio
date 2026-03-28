@@ -40,7 +40,7 @@ export function Hero() {
             <div className="container px-4 mx-auto text-center z-10">
                 <h1
                     ref={titleRef}
-                    className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-green-400 dark:from-green-500 dark:to-green-300 drop-shadow-sm"
+                    className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60 drop-shadow-sm"
                 >
                     {portfolioData.personal.name}
                 </h1>

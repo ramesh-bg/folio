@@ -17,7 +17,7 @@ export function Projects() {
                         <Card key={index} className="h-full flex flex-col group hover:border-primary/50 transition-colors">
                             <CardHeader>
                                 <CardTitle className="group-hover:text-primary transition-colors">{project.title}</CardTitle>
-                                <CardDescription className="font-mono text-xs uppercase tracking-wider text-green-600/70 dark:text-green-400/70">
+                                <CardDescription className="font-mono text-xs uppercase tracking-wider text-primary/70">
                                     {project.category}
                                 </CardDescription>
                             </CardHeader>
