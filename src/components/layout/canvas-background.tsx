@@ -1,9 +1,23 @@
 import { useEffect, useRef } from "react"
 import { useTheme } from "@/components/theme-provider"
 
+/**
+ * Convert HSL to RGB.
+ * h: 0-360, s: 0-100, l: 0-100
+ * Returns [r, g, b] each 0-255
+ */
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+    s /= 100
+    l /= 100
+    const k = (n: number) => (n + h / 30) % 12
+    const a = s * Math.min(l, 1 - l)
+    const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
+    return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)]
+}
+
 export function CanvasBackground() {
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const { theme } = useTheme()
+    const { theme, themeHue } = useTheme()
     const mouseRef = useRef({ x: 0, y: 0 })
 
     useEffect(() => {
@@ -39,10 +53,15 @@ export function CanvasBackground() {
         // Initial set
         handleResize()
 
-        // Grid Configuration
+        // Derive colors from theme hue
+        const hue = parseInt(themeHue) || 120
+        const [gr, gg, gb] = hslToRgb(hue, 100, 75) // grid tint color
+        const [sr, sg, sb] = hslToRgb(hue, 72, 45)   // spotlight color
+        const [dr, dg, db] = hslToRgb(hue, 100, 50)   // dot color
+
         const gridSize = 40
-        const gridColorDark = "rgba(0, 255, 128, 0.07)" // Cyber/Matrix Greenish tint
-        const gridColorLight = "rgba(0, 0, 0, 0.05)" // Engineering Grey
+        const gridColorDark = `rgba(${gr}, ${gg}, ${gb}, 0.07)`
+        const gridColorLight = "rgba(0, 0, 0, 0.05)"
         const highlightRadius = 200
 
         const drawGrid = () => {
@@ -76,7 +95,7 @@ export function CanvasBackground() {
             // Draw Mouse Spotlight
             if (mx && my) {
                 const gradient = ctx.createRadialGradient(mx, my, 0, mx, my, highlightRadius);
-                gradient.addColorStop(0, isDark ? "rgba(34, 197, 94, 0.15)" : "rgba(59, 130, 246, 0.1)");
+                gradient.addColorStop(0, isDark ? `rgba(${sr}, ${sg}, ${sb}, 0.15)` : `rgba(${sr}, ${sg}, ${sb}, 0.1)`);
                 gradient.addColorStop(1, "transparent");
 
                 ctx.fillStyle = gradient;
@@ -85,7 +104,7 @@ export function CanvasBackground() {
                 const snapX = Math.round(mx / gridSize) * gridSize
                 const snapY = Math.round(my / gridSize) * gridSize
 
-                ctx.fillStyle = isDark ? "#22c55e" : "#3b82f6"
+                ctx.fillStyle = `rgb(${dr}, ${dg}, ${db})`
                 ctx.beginPath()
                 ctx.arc(snapX, snapY, 3, 0, Math.PI * 2)
                 ctx.fill()
@@ -105,7 +124,7 @@ export function CanvasBackground() {
             window.removeEventListener("mousemove", handleMouseMove)
             cancelAnimationFrame(animationFrameId)
         }
-    }, [theme])
+    }, [theme, themeHue])
 
     return (
         <canvas
@@ -114,3 +133,4 @@ export function CanvasBackground() {
         />
     )
 }
+
