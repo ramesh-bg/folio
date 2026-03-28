@@ -142,7 +142,7 @@ export function SystemOverride() {
     }, [isOpen])
 
     return (
-        <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
+        <div className="fixed bottom-6 right-6 z-[100] hidden md:flex flex-col items-end">
             <AnimatePresence>
                 {isOpen && (
                     <motion.div

@@ -2,6 +2,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/layout/navbar"
 import { CanvasBackground } from "@/components/layout/canvas-background"
 import { SystemOverride } from "@/components/system-override"
+import { SpaceCombatMission } from "@/components/ui/cat-and-mouse"
 import { Hero } from "@/components/sections/hero"
 import { About } from "@/components/sections/about"
 import { Skills } from "@/components/sections/skills"
@@ -16,6 +17,7 @@ function App() {
       <div className="relative min-h-screen text-foreground selection:bg-primary selection:text-primary-foreground">
         <CanvasBackground />
         <Navbar />
+        <SpaceCombatMission />
         <SystemOverride />
 
         <main className="flex flex-col w-full">
